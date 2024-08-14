@@ -1,10 +1,16 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { router } from '@inertiajs/core';
 import { Head, Link } from '@inertiajs/vue3';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 const props = defineProps([
     'games',
 ])
+
+Echo.private('lobby')
+    .listen('GameJoined', (event) => {
+        router.reload({ only: ['games'], onSuccess: () => games.value = props.games.data })
+    })
 </script>
 
 <template>
