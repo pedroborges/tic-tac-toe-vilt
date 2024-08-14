@@ -9,7 +9,7 @@ const props = defineProps([
 
 Echo.private('lobby')
     .listen('GameJoined', (event) => {
-        router.reload({ only: ['games'], onSuccess: () => games.value = props.games.data })
+        router.reload({ only: ['games'] })
     })
 </script>
 
