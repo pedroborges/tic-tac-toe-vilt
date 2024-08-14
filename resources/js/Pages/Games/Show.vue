@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { router } from '@inertiajs/core';
 import { Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -33,17 +33,19 @@ const lines = [
     [2, 4, 6],
 ];
 
-Echo.join(`games.${props.game.id}`)
+const channel = Echo.join(`games.${props.game.id}`)
     .here((users) => players.value = users)
     .joining((user) => router.reload({
         onSuccess: () => players.value.push(user),
     }))
     .leaving((user) => players.value = players.value.filter(({ id }) => id !== user.id))
-    .listen('PlayerMadeMove', ({ game }) => {
-        boardState.value = game.state
+    .listenForWhisper('PlayerMadeMove', ({ state }) => {
+        boardState.value = state
 
         checkForVictory()
     })
+
+onMounted(checkForVictory)
 
 onUnmounted(() => Echo.leave(`games.${props.game.id}`))
 
@@ -54,7 +56,7 @@ function fillSquare(index) {
 
     boardState.value[index] = xTurn.value ? -1 : 1
 
-    router.put(route('games.update', props.game.id), { state: boardState.value })
+    updateOpponent()
 
     checkForVictory()
 }
@@ -84,10 +86,15 @@ function checkForVictory() {
 
 function resetGame() {
     boardState.value = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-
     gameState.change(gameStates.InProgress)
 
+    updateOpponent()
+}
+
+function updateOpponent() {
     router.put(route('games.update', props.game.id), { state: boardState.value })
+
+    channel.whisper('PlayerMadeMove', { state: boardState.value })
 }
 </script>
 

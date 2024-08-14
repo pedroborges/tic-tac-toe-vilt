@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Events\GameJoined;
-use App\Events\PlayerMadeMove;
 use App\Models\Game;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -83,8 +82,6 @@ class GameController extends Controller
         ]);
 
         $game->update($data);
-
-        PlayerMadeMove::broadcast($game)->toOthers();
 
         return to_route('games.show', $game);
     }
