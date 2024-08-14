@@ -10,9 +10,14 @@ class Game extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'state' => 'json',
+    ];
+
     protected $fillable = [
         'player_one_id',
         'player_two_id',
+        'state',
     ];
 
     public function playerOne(): BelongsTo

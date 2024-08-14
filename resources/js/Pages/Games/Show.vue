@@ -7,11 +7,18 @@ import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { useGameState, gameStates } from "@/Composables/useGameState.js";
 
-const props = defineProps(['game']);
-const boardState = ref([0, 0, 0, 0, 0, 0, 0, 0, 0])
+const props = defineProps(['auth', 'game']);
+const boardState = ref(props.game.state ?? [0, 0, 0, 0, 0, 0, 0, 0, 0])
 const players = ref([])
 const gameState = useGameState();
 const xTurn = computed(() => boardState.value.reduce((carry, value) => carry + value, 0) === 0)
+const yourTurn = computed(() => {
+    if (props.game.player_one_id === props.auth.user.id) {
+        return xTurn.value
+    }
+
+    return ! xTurn.value
+})
 const lines = [
     // rows
     [0, 1, 2],
@@ -32,11 +39,22 @@ Echo.join(`games.${props.game.id}`)
         onSuccess: () => players.value.push(user),
     }))
     .leaving((user) => players.value = players.value.filter(({ id }) => id !== user.id))
+    .listen('PlayerMadeMove', ({ game }) => {
+        boardState.value = game.state
+
+        checkForVictory()
+    })
 
 onUnmounted(() => Echo.leave(`games.${props.game.id}`))
 
 function fillSquare(index) {
+    if (! yourTurn.value) {
+        return
+    }
+
     boardState.value[index] = xTurn.value ? -1 : 1
+
+    router.put(route('games.update', props.game.id), { state: boardState.value })
 
     checkForVictory()
 }
@@ -58,12 +76,18 @@ function checkForVictory() {
 
     if (! boardState.value.includes(0)) {
         gameState.change(gameStates.Stalemate)
+        return
     }
+
+    gameState.change(gameStates.InProgress)
 }
 
 function resetGame() {
     boardState.value = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
     gameState.change(gameStates.InProgress)
+
+    router.put(route('games.update', props.game.id), { state: boardState.value })
 }
 </script>
 
@@ -80,7 +104,7 @@ function resetGame() {
 
         <ul class="max-w-sm mx-auto mt-6 space-y-2">
             <li class="flex items-center gap-2">
-                <span class="p-1.5 font-bold rounded bg-gray-200">X</span>
+                <span class="p-1.5 font-bold rounded bg-gray-200" :class="{ 'bg-green-200': xTurn }">X</span>
                 <span>{{ game.player_one.name }}</span>
                 <span
                     class="size-2 rounded-full"
@@ -91,7 +115,7 @@ function resetGame() {
                 ></span>
             </li>
             <li v-if="game.player_two" class="flex items-center gap-2">
-                <span class="p-1.5 font-bold rounded bg-gray-200">O</span>
+                <span class="p-1.5 font-bold rounded bg-gray-200" :class="{ 'bg-green-200': ! xTurn }">O</span>
                 <span>{{ game.player_two.name }}</span>
                 <span
                     class="size-2 rounded-full"
